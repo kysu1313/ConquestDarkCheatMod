@@ -3,13 +3,11 @@ namespace ConquestDarkNet6Mods;
 public class ModSettings
 {
     public int   TargetHealth        = 99999;
-    public float AttackSpeedBoost    = 100f;
-    public float BlockChance         = 100f;
-    public float RareFind            = 100f;
+    public float AttackSpeedBoost    = 0f;
+    public float BlockChance         = 0f;
+    public float RareFind            = 0f;
     public float AutoAttackCoolDown  = 0f;
     public float BaseMovementSpeed   = 100f;
-
-    // Extras
     public float CritChance          = 1f;
     public float CritDamage          = 10f;
     public int   ProjAmount          = 50;

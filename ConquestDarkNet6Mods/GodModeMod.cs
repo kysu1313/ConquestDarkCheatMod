@@ -16,13 +16,22 @@ public class GodModeMod : MelonMod
 {
     public override void OnInitializeMelon()
     {
-        ClassInjector.RegisterTypeInIl2Cpp<GodModeDriver>();
+        try
+        {
+            ClassInjector.RegisterTypeInIl2Cpp<GodModeDriver>();
 
-        var go = new GameObject("ConquestDark_GodModeDriver");
-        Object.DontDestroyOnLoad(go);
-        go.hideFlags = HideFlags.HideAndDontSave;
-        go.AddComponent<GodModeDriver>();
+            var go = new GameObject("ConquestDark_GodModeDriver");
+            Object.DontDestroyOnLoad(go);
+            go.hideFlags = HideFlags.HideAndDontSave;
+            GodModeDriver.Log = LoggerInstance;
+            go.AddComponent<GodModeDriver>();
 
-        LoggerInstance.Msg("God mode driver injected.");
+            LoggerInstance.Msg("God mode driver injected.");
+        }
+        catch (System.Exception ex)
+        {
+            LoggerInstance.Error(ex.ToString());
+        }
     }
+
 }

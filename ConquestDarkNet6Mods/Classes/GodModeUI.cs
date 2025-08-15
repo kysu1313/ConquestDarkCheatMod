@@ -1,11 +1,13 @@
 using UnityEngine;
 using System;
+using MelonLoader;
 
 namespace ConquestDarkNet6Mods
 {
     public class GodModeUI
     {
-        // Public callbacks wired by driver
+        private readonly MelonLogger.Instance _logger;
+
         public Action onApplyClicked;
         public Action onResetClicked;
         public Action onToggleGodModeClicked;
@@ -15,16 +17,17 @@ namespace ConquestDarkNet6Mods
         // Window geometry
         private Rect _win = new Rect(40, 40, 420, 540);
         private const float HeaderH = 24f;
-        private const float Pad     = 8f;
-        private const float LineH   = 22f;
-        private const float LabelW  = 180f;
-        private const float ValW    = 120f;   // value label box
-        private const float BtnW    = 38f;    // step buttons
-        private const float Gap     = 6f;
-        private const float RowGap  = 6f;
-        private const float BtnH    = 28f;
-        private const float MinW    = 420f;
-        private const float MinH    = 540f;
+        private const float Pad = 8f;
+        private const float LineH = 22f;
+        private const float LabelW = 150f;
+        private const float ValW = 90f;
+        private const float BtnW = 28f;
+        private const float Gap = 6f;
+        private const float RowGap = 6f;
+        private const float BtnH = 28f;
+        private const float MinW = 420f;
+        private const float MinH = 540f;
+
 
         // Dragging
         private bool _dragging;
@@ -33,17 +36,30 @@ namespace ConquestDarkNet6Mods
         // Manual scroll
         private float _scrollY;
 
-        // --- Minimal keypad popup (all GUI.Button/Label, no TextField) ---
+        // Minimal keypad popup
         private bool _popupOpen;
         private Rect _popupRect = new Rect(0, 0, 300, 340);
         private string _popupTitle;
         private string _popupBuffer = "";
         private bool _popupIsFloat;
         private Action<float> _popupApplyFloat;
-        private Action<int>   _popupApplyInt;
+        private Action<int> _popupApplyInt;
+        
+        // Track the active button between down/up
+        private bool _btnArmed;
+        private Rect _btnArmedScreenRect;
+        private Rect _btnArmedRect;
+        private int  _btnArmedId = -1;
 
-        // Kept for driver compatibility; no longer used
-        public void SyncStringsFromValues(ModSettings m) { /* no-op; steppers show live values */ }
+        public GodModeUI(MelonLogger.Instance logger)
+        {
+            _logger = logger;
+        }
+
+        public void SyncStringsFromValues(ModSettings m)
+        {
+            /* no-op; steppers show live values */
+        }
 
         public void DrawWindow(ModSettings m, bool canApply, bool godMode)
         {
@@ -51,6 +67,7 @@ namespace ConquestDarkNet6Mods
             if (_win.width < MinW) _win.width = MinW;
             if (_win.height < MinH) _win.height = MinH;
 
+            GUI.depth = -1000;
             GUI.skin.label.richText = true;
 
             // Window bg + title
@@ -58,7 +75,9 @@ namespace ConquestDarkNet6Mods
             HandleDrag(new Rect(_win.x, _win.y, _win.width, HeaderH));
 
             // Content rect
-            var content = new Rect(_win.x + Pad, _win.y + HeaderH + Pad, _win.width - (Pad * 2), _win.height - (HeaderH + Pad * 2));
+            var content = new Rect(_win.x + Pad, _win.y + HeaderH + Pad, _win.width - (Pad * 2),
+                _win.height - (HeaderH + Pad * 2));
+            
             float areaH = content.height - (BtnH + 12f);
             var areaRect = new Rect(content.x, content.y, content.width, areaH);
 
@@ -74,40 +93,42 @@ namespace ConquestDarkNet6Mods
                 _scrollY += e.delta.y * 12f;
                 e.Use();
             }
+
             if (_scrollY < 0f) _scrollY = 0f;
             if (_scrollY > maxScroll) _scrollY = maxScroll;
 
-            // Clip group
             GUI.BeginGroup(areaRect);
-            // Content group shifted up by scroll
             GUI.BeginGroup(new Rect(0, -_scrollY, areaRect.width - 16f, viewH));
 
             float y = 0f;
 
-            // Tip
+            // the inner group's screen-space origin
+            var groupOrigin = new Vector2(areaRect.x, areaRect.y - _scrollY);
+
             GUI.Label(new Rect(0, y, areaRect.width - 16f, LineH),
                 "Tip: toggle 'Live Apply' to push changes continuously. Otherwise click 'Apply to Player'.");
             y += LineH + RowGap;
 
             // Main fields (int/float steppers + Set… keypad)
-            y = RowIntStepper   (y, "Target Health",       m.TargetHealth,       v => m.TargetHealth = v,      1, 10, 0, int.MaxValue);
-            y = RowFloatStepper (y, "Attack Speed",        m.AttackSpeedBoost,   v => m.AttackSpeedBoost = v,  0.1f, 1f, 0f,  99999f);
-            y = RowFloatStepper (y, "Block Chance",        m.BlockChance,        v => m.BlockChance = v,       1f,   10f, 0f, 100f);
-            y = RowFloatStepper (y, "Rare Find",           m.RareFind,           v => m.RareFind = v,          1f,   10f, 0f, 100f);
-            y = RowFloatStepper (y, "Ability Cooldown",    m.AutoAttackCoolDown, v => m.AutoAttackCoolDown = v,0.05f, 0.5f, 0f,  999f);
-            y = RowFloatStepper (y, "Base Movement Speed", m.BaseMovementSpeed,  v => m.BaseMovementSpeed = v, 1f,   10f, 0f,  9999f);
+            float a = RowIntStepper   (y, "Target Health",       m.TargetHealth,       v => m.TargetHealth = v,      50, 500, 0, int.MaxValue, groupOrigin);
+            float b = RowFloatStepper (a, "Attack Speed",        m.AttackSpeedBoost,   v => m.AttackSpeedBoost = v,  10f, 50f, 0f,  99999f, groupOrigin);
+            float c = RowFloatStepper (b, "Block Chance",        m.BlockChance,        v => m.BlockChance = v,       10f,   50f, 0f, 1000f, groupOrigin);
+            float d = RowFloatStepper (c, "Rare Find",           m.RareFind,           v => m.RareFind = v,          10f,   50f, 0f, 1000f, groupOrigin);
+            float f = RowFloatStepper (d, "Ability Cooldown",    m.AutoAttackCoolDown, v => m.AutoAttackCoolDown = v,10f, 50f, 0f, 999f, groupOrigin);
+            float g = RowFloatStepper (f, "Base Movement Speed", m.BaseMovementSpeed,  v => m.BaseMovementSpeed = v, 10f,   50f, 0f, 9999f, groupOrigin);
+
 
             // Extras header
-            GUI.Label(new Rect(0, y, areaRect.width - 16f, LineH), "<b>Extras</b>");
-            y += LineH + RowGap;
+            GUI.Label(new Rect(0, g, areaRect.width - 16f, LineH), "<b>Extras</b>");
+            g += LineH + RowGap;
 
             // Extra fields
-            y = RowFloatStepper (y, "Crit Chance",         m.CritChance,         v => m.CritChance = v,       0.01f, 0.1f, 0f,  1f);
-            y = RowFloatStepper (y, "Crit Damage",         m.CritDamage,         v => m.CritDamage = v,       0.5f,  5f,   0f,  999f);
-            y = RowIntStepper   (y, "Projectile Amount",   m.ProjAmount,         v => m.ProjAmount = v,       1,     10,    0,   9999);
-            y = RowIntStepper   (y, "Pierce Amount",       m.PierceAmount,       v => m.PierceAmount = v,     1,     10,    0,   9999);
-            y = RowIntStepper   (y, "Target Amount",       m.TargetAmount,       v => m.TargetAmount = v,     1,     10,    0,   9999);
-            y = RowIntStepper   (y, "Chain Targets",       m.ChainTargets,       v => m.ChainTargets = v,     1,     10,    0,   9999);
+            float h = RowFloatStepper(g, "Crit Chance", m.CritChance, v => m.CritChance = v, 0.01f, 0.1f, 0f, 1f, groupOrigin);
+            float i = RowFloatStepper(h, "Crit Damage", m.CritDamage, v => m.CritDamage = v, 0.5f, 5f, 0f, 999f, groupOrigin);
+            float j = RowIntStepper(i, "Projectile Amount", m.ProjAmount, v => m.ProjAmount = v, 1, 10, 0, 9999, groupOrigin);
+            float k = RowIntStepper(j, "Pierce Amount", m.PierceAmount, v => m.PierceAmount = v, 1, 10, 0, 9999, groupOrigin);
+            float l = RowIntStepper(k, "Target Amount", m.TargetAmount, v => m.TargetAmount = v, 1, 10, 0, 9999, groupOrigin);
+            float n = RowIntStepper(l, "Chain Targets", m.ChainTargets, v => m.ChainTargets = v, 1, 10, 0, 9999, groupOrigin);
 
             GUI.EndGroup();
 
@@ -116,7 +137,7 @@ namespace ConquestDarkNet6Mods
             {
                 float thumbSize = Mathf.Max(30f, areaH * (areaH / (viewH + 0.0001f)));
                 _scrollY = GUI.VerticalScrollbar(new Rect(areaRect.width - 14f, 0f, 14f, areaRect.height),
-                                                 _scrollY, thumbSize, 0f, maxScroll);
+                    _scrollY, thumbSize, 0f, maxScroll);
             }
 
             GUI.EndGroup();
@@ -144,14 +165,13 @@ namespace ConquestDarkNet6Mods
             if (GUI.Button(new Rect(content.x + content.width - 140f, barY, 140f, BtnH), gmLabel))
                 onToggleGodModeClicked?.Invoke();
 
-            // Popup last so it draws on top
             if (_popupOpen)
                 DrawNumericPopup();
         }
 
         public void ClampToScreen()
         {
-            float maxX = Screen.width  - _win.width;
+            float maxX = Screen.width - _win.width;
             float maxY = Screen.height - _win.height;
             if (_win.x < 0) _win.x = 0;
             if (_win.y < 0) _win.y = 0;
@@ -159,79 +179,147 @@ namespace ConquestDarkNet6Mods
             if (_win.y > maxY) _win.y = maxY;
         }
 
-        // ------------- Rows (no TextField) -------------
-
-        private float RowFloatStepper(float y, string label, float value, Action<float> set, float step, float bigStep, float min, float max)
+        private bool Btn(Rect localRect, string text, Vector2 originScreen, int id)
         {
-            // label
+            GUI.Box(localRect, text, GUI.skin.button);
+
+            var e = Event.current;
+            if (e == null) return false;
+
+            // convert to screen-space
+            Vector2 mouseScreen = originScreen + e.mousePosition;
+            Rect screenRect = new Rect(
+                originScreen.x + localRect.x,
+                originScreen.y + localRect.y,
+                localRect.width,
+                localRect.height
+            );
+
+            // click down
+            if (e.type == EventType.MouseDown && e.button == 0 && screenRect.Contains(mouseScreen))
+            {
+                _btnArmed = true;
+                _btnArmedId = id;
+                _btnArmedScreenRect = screenRect;
+                e.Use();
+                return false;
+            }
+
+            // release click
+            if (e.type == EventType.MouseUp && e.button == 0 && _btnArmed && _btnArmedId == id)
+            {
+                bool clicked = _btnArmedScreenRect.Contains(mouseScreen);
+                _btnArmed = false;
+                _btnArmedId = -1;
+                if (clicked) e.Use();
+                return clicked;
+            }
+
+            // reset armed btn
+            if (e.rawType == EventType.MouseUp && _btnArmed && _btnArmedId == id)
+            {
+                _btnArmed = false;
+                _btnArmedId = -1;
+            }
+
+            return false;
+        }
+
+        // ------------- Rows -------------
+        private float RowFloatStepper(float y, string label, float value,
+            System.Action<float> set, float step, float bigStep,
+            float min, float max, Vector2 originScreen)
+        {
             GUI.Label(new Rect(0, y, LabelW, LineH), label);
 
-            // value box
-            var valRect = new Rect(LabelW + Gap, y, ValW, LineH);
-            GUI.Box(valRect, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            int idBase = label.GetHashCode();
 
-            // mouse wheel adjust over value
+            float x = LabelW + Gap;
+            float applied = 0f;
+
+            if (Btn(new Rect(x, y, BtnW, LineH), "-", originScreen, idBase * 2))
+            {
+                applied -= (Event.current.shift || Event.current.control) ? bigStep : step;
+                _logger.Msg($"{label} - {applied}");
+            }
+            x += BtnW + Gap;
+
+            var valRect = new Rect(x, y, ValW, LineH);
+            GUI.Box(valRect, GUIContent.none, GUI.skin.textField);
+            string valStr = value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            GUI.Label(valRect, valStr);
+            x += ValW + Gap;
+
+            if (Btn(new Rect(x, y, BtnW, LineH), "+", originScreen, idBase * 2 + 1))
+            {
+                applied += (Event.current.shift || Event.current.control) ? bigStep : step;
+                _logger.Msg($"{label} + {applied}");
+            }
+            x += BtnW + Gap;
+
             var e = Event.current;
-            if (e != null && e.type == EventType.ScrollWheel && new Rect(valRect).Contains(e.mousePosition))
+            if (e != null && e.type == EventType.ScrollWheel && valRect.Contains(e.mousePosition))
             {
                 float s = (e.shift || e.control) ? bigStep : step;
-                value = Clamp(value + (-e.delta.y) * s, min, max);
-                set(value);
+                applied += (-e.delta.y) * s;
                 e.Use();
             }
 
-            // step buttons
-            float x = valRect.xMax + Gap;
-            float s1 = GUI.Button(new Rect(x, y, BtnW, LineH), "-10") ? -bigStep : 0f; x += BtnW + 2;
-            float s2 = GUI.Button(new Rect(x, y, BtnW, LineH), " -1") ? -step    : 0f; x += BtnW + 2;
-            float s3 = GUI.Button(new Rect(x, y, BtnW, LineH), " +1") ?  step    : 0f; x += BtnW + 2;
-            float s4 = GUI.Button(new Rect(x, y, BtnW, LineH), "+10") ?  bigStep : 0f; x += BtnW + 6;
-
-            float delta = s1 + s2 + s3 + s4;
-            if (delta != 0f)
+            if (applied != 0f)
             {
-                value = Clamp(value + delta, min, max);
+                value = Mathf.Clamp(value + applied, min, max);
                 set(value);
+                valStr = value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+                GUI.Label(valRect, valStr);
             }
-
-            // Set… keypad
-            if (GUI.Button(new Rect(x, y, 50f, LineH), "Set…"))
-                OpenNumericPopup(label, value.ToString(System.Globalization.CultureInfo.InvariantCulture), true,
-                    (Action<float>)(fv => set(Clamp(fv, min, max))));
 
             return y + LineH + RowGap;
         }
 
-        private float RowIntStepper(float y, string label, int value, Action<int> set, int step, int bigStep, int min, int max)
+        private float RowIntStepper(float y, string label, int value,
+            System.Action<int> set, int step, int bigStep,
+            int min, int max, Vector2 originScreen)
         {
             GUI.Label(new Rect(0, y, LabelW, LineH), label);
-            var valRect = new Rect(LabelW + Gap, y, ValW, LineH);
-            GUI.Box(valRect, value.ToString());
+
+            int idBase = label.GetHashCode();
+
+            float x = LabelW + Gap;
+            int delta = 0;
+
+            if (Btn(new Rect(x, y, BtnW, LineH), "-", originScreen, idBase * 2))
+            {
+                delta -= (Event.current.shift || Event.current.control) ? bigStep : step;
+                _logger.Msg($"{label} - {delta}");
+            }
+            x += BtnW + Gap;
+
+            var valRect = new Rect(x, y, ValW, LineH);
+            GUI.Box(valRect, GUIContent.none, GUI.skin.textField);
+            GUI.Label(valRect, value.ToString());
+            x += ValW + Gap;
+
+            if (Btn(new Rect(x, y, BtnW, LineH), "+", originScreen, idBase * 2 + 1))
+            {
+                delta += (Event.current.shift || Event.current.control) ? bigStep : step;
+                _logger.Msg($"{label} + {delta}");
+            }
+            x += BtnW + Gap;
 
             var e = Event.current;
-            if (e != null && e.type == EventType.ScrollWheel && new Rect(valRect).Contains(e.mousePosition))
+            if (e != null && e.type == EventType.ScrollWheel && valRect.Contains(e.mousePosition))
             {
                 int s = (e.shift || e.control) ? bigStep : step;
-                int nv = Mathf.Clamp(value + (int)(-e.delta.y) * s, min, max);
-                if (nv != value) { value = nv; set(value); }
+                delta += (int)(-e.delta.y) * s;
                 e.Use();
             }
 
-            float x = valRect.xMax + Gap;
-            int d1 = GUI.Button(new Rect(x, y, BtnW, LineH), "-10") ? -bigStep : 0; x += BtnW + 2;
-            int d2 = GUI.Button(new Rect(x, y, BtnW, LineH), " -1") ? -step    : 0; x += BtnW + 2;
-            int d3 = GUI.Button(new Rect(x, y, BtnW, LineH), " +1") ?  step    : 0; x += BtnW + 2;
-            int d4 = GUI.Button(new Rect(x, y, BtnW, LineH), "+10") ?  bigStep : 0; x += BtnW + 6;
-
-            int delta = d1 + d2 + d3 + d4;
             if (delta != 0)
             {
                 value = Mathf.Clamp(value + delta, min, max);
                 set(value);
+                GUI.Label(valRect, value.ToString()); // refresh
             }
-
-            if (GUI.Button(new Rect(x, y, 50f, LineH), "Set…"))
-                OpenNumericPopup(label, value.ToString(), false, i => set(Mathf.Clamp(i, min, max)));
 
             return y + LineH + RowGap;
         }
@@ -277,10 +365,14 @@ namespace ConquestDarkNet6Mods
             float w = _popupRect.width - 24f;
 
             // Display buffer
-            GUI.Box(new Rect(x, y, w, 28f), _popupBuffer); y += 34f;
+            GUI.Box(new Rect(x, y, w, 28f), _popupBuffer);
+            y += 34f;
 
-            // Key rows (buttons only)
-            float bw = (w - 2 * 6f) / 3f; float bh = 36f; float gx = x; float gy = y;
+            // Key rows
+            float bw = (w - 2 * 6f) / 3f;
+            float bh = 36f;
+            float gx = x;
+            float gy = y;
 
             // Row helper
             void Key(string k)
@@ -288,28 +380,53 @@ namespace ConquestDarkNet6Mods
                 if (GUI.Button(new Rect(gx, gy, bw, bh), k))
                 {
                     if (k == "CLR") _popupBuffer = "";
-                    else if (k == "DEL" && _popupBuffer.Length > 0) _popupBuffer = _popupBuffer.Substring(0, _popupBuffer.Length - 1);
-                    else if (k == "." && !_popupIsFloat) { /* ignore */ }
-                    else if (k == "-" )
+                    else if (k == "DEL" && _popupBuffer.Length > 0)
+                        _popupBuffer = _popupBuffer.Substring(0, _popupBuffer.Length - 1);
+                    else if (k == "." && !_popupIsFloat)
+                    {
+                        /* ignore for now */
+                    }
+                    else if (k == "-")
                     {
                         if (_popupBuffer.StartsWith("-")) _popupBuffer = _popupBuffer.Substring(1);
                         else _popupBuffer = "-" + _popupBuffer;
                     }
                     else _popupBuffer += k;
                 }
+
                 gx += bw + 6f;
             }
 
+            /* Key pad setup */
             // 7 8 9
-            gx = x; Key("7"); Key("8"); Key("9"); gy += bh + 6f;
+            gx = x;
+            Key("7");
+            Key("8");
+            Key("9");
+            gy += bh + 6f;
             // 4 5 6
-            gx = x; Key("4"); Key("5"); Key("6"); gy += bh + 6f;
+            gx = x;
+            Key("4");
+            Key("5");
+            Key("6");
+            gy += bh + 6f;
             // 1 2 3
-            gx = x; Key("1"); Key("2"); Key("3"); gy += bh + 6f;
+            gx = x;
+            Key("1");
+            Key("2");
+            Key("3");
+            gy += bh + 6f;
             // +/- 0 .
-            gx = x; Key("-"); Key("0"); Key("."); gy += bh + 6f;
+            gx = x;
+            Key("-");
+            Key("0");
+            Key(".");
+            gy += bh + 6f;
             // CLR  DEL
-            gx = x; Key("CLR"); Key("DEL"); gy += bh + 10f;
+            gx = x;
+            Key("CLR");
+            Key("DEL");
+            gy += bh + 10f;
 
             // Action buttons
             float aw = (w - 6f) / 2f;
@@ -321,7 +438,7 @@ namespace ConquestDarkNet6Mods
                 if (_popupIsFloat)
                 {
                     if (float.TryParse(_popupBuffer, System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture, out var fv))
+                            System.Globalization.CultureInfo.InvariantCulture, out var fv))
                         _popupApplyFloat?.Invoke(fv);
                 }
                 else
@@ -329,6 +446,7 @@ namespace ConquestDarkNet6Mods
                     if (int.TryParse(_popupBuffer, out var iv))
                         _popupApplyInt?.Invoke(iv);
                 }
+
                 _popupOpen = false;
             }
         }

@@ -7,30 +7,39 @@ using UnityEngine.SceneManagement;
 
 public class GodModeDriver : MonoBehaviour
     {
-        public GodModeDriver(System.IntPtr ptr) : base(ptr) { }
+        
+        public static MelonLogger.Instance Log { get; set; }
 
         private Il2Cpp.GameMaster _gm;
-        private Il2Cpp.Character _currentPlayer; // replace with your real player type
+        private Il2Cpp.Character _currentPlayer;
         private bool _scannedThisScene;
 
         private bool _godMode;
         private bool _showUi;
 
-        // Native key helper
         [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
         private static bool Pressed(int vk) => (GetAsyncKeyState(vk) & 0x1) != 0;
         private const int VK_ESCAPE = 0x1B;
         private const int VK_NUMPAD1 = 0x61, VK_NUMPAD2 = 0x62, VK_NUMPAD3 = 0x63, VK_NUMPAD4 = 0x64, VK_NUMPAD5 = 0x65, VK_NUMPAD6 = 0x66;
 
-        // Settings edited by UI
         private ModSettings _settings = new ModSettings();
         private readonly ModSettings _defaults = new ModSettings();
 
         // UI instance
-        private readonly GodModeUI _ui = new GodModeUI();
+        private GodModeUI _ui;
+
+        public GodModeDriver(System.IntPtr ptr) : base(ptr) {}
 
         void Awake()
         {
+            if (Log == null)
+            {
+                MelonLogger.Error("Logger is null!.");
+                return;
+            }
+            
+            _ui = new GodModeUI(Log);
+            
             SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnSceneLoaded;
 
             // Wire UI callbacks
@@ -62,11 +71,10 @@ public class GodModeDriver : MonoBehaviour
         {
             if (!Application.isFocused) return;
 
-            // Toggle panel with Escape (native helper to avoid Input issues)
             if (Pressed(VK_ESCAPE))
                 _showUi = !_showUi;
 
-            // Find the player once per scene (or attempt refresh if null)
+            // Find the player once per scene
             if (!_scannedThisScene || _currentPlayer == null)
             {
                 _scannedThisScene = true;
@@ -90,16 +98,14 @@ public class GodModeDriver : MonoBehaviour
             if (Pressed(VK_NUMPAD5)) WithPlayer(p => { var aa = p.activeAutoAttackAbility; if (aa != null) aa.abilityCooldown = _settings.AutoAttackCoolDown; });
             if (Pressed(VK_NUMPAD6)) WithPlayer(p => p.baseMovementSpeed = _settings.BaseMovementSpeed);
 
-            // Enforce god mode
             if (_godMode)
             {
                 WithPlayer(p =>
                 {
                     try
                     {
-                        p.maxLife = _settings.TargetHealth; // or maxHealth if that’s your field
+                        p.maxLife = _settings.TargetHealth;
                         p.health  = _settings.TargetHealth;
-                        // p.immuneToDamage = true; // if exists
                     }
                     catch (System.Exception ex)
                     {
@@ -112,21 +118,19 @@ public class GodModeDriver : MonoBehaviour
             if (_ui.LiveApply)
                 ApplyAllEditable();
 
-            // Optional: keep window on screen
             _ui.ClampToScreen();
         }
 
         void OnGUI()
         {
             if (!_showUi) return;
-
-            // Let UI draw; pass capabilities (canApply) and current flags
             bool canApply = _currentPlayer != null;
             _ui.DrawWindow(_settings, canApply, _godMode);
         }
 
         // ------- Logic helpers -------
 
+        // Confirm we have player object before updating
         private void WithPlayer(System.Action<Il2Cpp.Character> fn)
         {
             if (_currentPlayer == null)
@@ -148,19 +152,22 @@ public class GodModeDriver : MonoBehaviour
                     p.attackSpeed = _settings.AttackSpeedBoost;
                     p.blockChance = _settings.BlockChance;
                     p.rareFind = _settings.RareFind;
-
-                    var aa = p.activeAutoAttackAbility;
-                    if (aa != null) aa.abilityCooldown = _settings.AutoAttackCoolDown;
-
                     p.baseMovementSpeed = _settings.BaseMovementSpeed;
-
-                    // Uncomment if your dump has these:
-                    // p.critChance   = _settings.CritChance;
-                    // p.critDamage   = _settings.CritDamage;
-                    // p.projectiles  = _settings.ProjAmount;
-                    // p.pierceAmount = _settings.PierceAmount;
-                    // p.targetAmount = _settings.TargetAmount;
-                    // p.chainTargets = _settings.ChainTargets;
+                    
+                    var aa = p.activeAutoAttackAbility;
+                    if (aa != null)
+                    {
+                        aa.abilityCooldown = _settings.AutoAttackCoolDown;
+                        var ss = aa.stats;
+                        if (ss != null)
+                        {
+                            ss.criticalStrikeChance = _settings.CritChance;
+                            ss.criticalStrikeDamage = _settings.CritDamage;
+                            ss.piercingStrikeChance = _settings.PierceAmount;
+                            ss.projectileAmountMultiplier = _settings.ProjAmount;
+                            ss.chainedTargetsMultiplier = _settings.ChainTargets;
+                        }
+                    }
 
                     if (_godMode)
                     {
