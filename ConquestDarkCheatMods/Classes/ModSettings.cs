@@ -1,4 +1,4 @@
-namespace ConquestDarkNet6Mods;
+namespace ConquestDarkCheatMods;
 
 public class ModSettings
 {

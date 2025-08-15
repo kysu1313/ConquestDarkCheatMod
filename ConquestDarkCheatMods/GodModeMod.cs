@@ -3,14 +3,15 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Il2CppInterop.Runtime.Injection;
 using System.Runtime.InteropServices;
+using ConquestDarkCheatMods.Classes;
 using Il2Cpp;
 using UnityEngine.Events;
 using Object = UnityEngine.Object;
 
-[assembly: MelonInfo(typeof(ConquestDarkNet6Mods.GodModeMod), "ConquestDarkNet6Mods", "1.0.0", "ksups")]
+[assembly: MelonInfo(typeof(ConquestDarkCheatMods.GodModeMod), "ConquestDarkCheatMods", "1.0.0", "ksups")]
 [assembly: MelonGame(null, null)]
 
-namespace ConquestDarkNet6Mods;
+namespace ConquestDarkCheatMods;
 
 public class GodModeMod : MelonMod
 {

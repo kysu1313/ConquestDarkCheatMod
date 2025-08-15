@@ -5,13 +5,14 @@
 /projectSettingsUpdater.xml
 /contentModel.xml
 /modules.xml
-/.idea.ConquestDarkNet6Mods.iml
+/.idea.ConquestDarkCheatMods.iml
 # Editor-based HTTP Client requests
 /httpRequests/
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
-/bin/
+bin/
+obj/
+ConquestDarkCheatMods/obj/
+ConquestDarkCheatMods/bin/
 /.idea
-ConquestDarkNet6Mods/obj/
-ConquestDarkNet6Mods/bin/
