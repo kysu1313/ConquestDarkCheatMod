@@ -12,3 +12,6 @@
 /dataSources/
 /dataSources.local.xml
 /bin/
+/.idea
+ConquestDarkNet6Mods/obj/
+ConquestDarkNet6Mods/bin/
