@@ -1,6 +1,6 @@
 # Conquest Dark Cheat Mod
 
-![](ConquestDarkNet6Mods/gifs/CQDarkGif.gif)
+![](ConquestDarkCheatMods/gifs/CQDarkGif.gif)
 
 ## Instructions:
 
