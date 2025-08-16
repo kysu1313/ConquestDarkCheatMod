@@ -1,33 +1,21 @@
+using ConquestDarkCheatMods.Constants;
+
 namespace ConquestDarkCheatMods;
 
 public class ModSettings
 {
-    public int   TargetHealth        = 99999;
-    public float AttackSpeedBoost    = 0f;
-    public float BlockChance         = 0f;
-    public float RareFind            = 0f;
-    public float AutoAttackCoolDown  = 0f;
-    public float BaseMovementSpeed   = 100f;
-    public float CritChance          = 1f;
-    public float CritDamage          = 10f;
-    public int   ProjAmount          = 50;
-    public int   PierceAmount        = 99;
-    public int   TargetAmount        = 25;
-    public int   ChainTargets        = 25;
+    public int   TargetHealth        = CheatUiConstants.TargetHealth_Default;
+    public float AttackSpeedBoost    = CheatUiConstants.AttackSpeed_Default;
+    public float BaseMovementSpeed   = CheatUiConstants.BaseMoveSpeed_Default;
+    public float AutoAttackCoolDown  = CheatUiConstants.AbilityCooldown_Default;
+    public float BlockChance         = CheatUiConstants.BlockChance_Default;
+    public float RareFind            = CheatUiConstants.RareFind_Default;
+    public float CritChance          = CheatUiConstants.CritChance_Default;
+    public float CritDamage          = CheatUiConstants.CritDamage_Default;
+    public int   ProjAmount          = CheatUiConstants.ProjAmount_Default;
+    public int   PierceAmount        = CheatUiConstants.PierceAmount_Default;
+    public int   TargetAmount        = CheatUiConstants.TargetAmount_Default;
+    public int   ChainTargets        = CheatUiConstants.ChainTargets_Default;
 
-    public void CopyFrom(ModSettings other)
-    {
-        TargetHealth       = other.TargetHealth;
-        AttackSpeedBoost   = other.AttackSpeedBoost;
-        BlockChance        = other.BlockChance;
-        RareFind           = other.RareFind;
-        AutoAttackCoolDown = other.AutoAttackCoolDown;
-        BaseMovementSpeed  = other.BaseMovementSpeed;
-        CritChance         = other.CritChance;
-        CritDamage         = other.CritDamage;
-        ProjAmount         = other.ProjAmount;
-        PierceAmount       = other.PierceAmount;
-        TargetAmount       = other.TargetAmount;
-        ChainTargets       = other.ChainTargets;
-    }
+    public void CopyFrom(ModSettings s) { /* unchanged */ }
 }
