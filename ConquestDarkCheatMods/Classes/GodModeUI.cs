@@ -90,7 +90,6 @@ namespace ConquestDarkCheatMods
                 float viewH = lines * (LineH + RowGap) + 20f;
                 float maxScroll = Mathf.Max(0f, viewH - areaH);
 
-                // Mouse wheel scroll when cursor over area
                 var e = Event.current;
                 if (e != null && e.type == EventType.ScrollWheel && areaRect.Contains(e.mousePosition))
                 {
@@ -143,7 +142,6 @@ namespace ConquestDarkCheatMods
                     CheatUiConstants.BaseMoveSpeed_Step, CheatUiConstants.BaseMoveSpeed_BigStep,
                     CheatUiConstants.BaseMoveSpeed_Min, CheatUiConstants.BaseMoveSpeed_Max, groupOrigin);
 
-                // Extras
                 GUI.Label(new Rect(0, g, areaRect.width - 16f, LineH), "<b>Extras</b>");
                 g += LineH + RowGap;
 
@@ -229,7 +227,7 @@ namespace ConquestDarkCheatMods
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex.Message);
             }
         }
 
@@ -313,7 +311,7 @@ namespace ConquestDarkCheatMods
         {
             GUI.Label(new Rect(0, y, LabelW, LineH), label);
 
-            int idBase = NextId();  // stable per row, per frame
+            int idBase = NextId();
 
             float x = LabelW + Gap;
             float applied = 0f;
